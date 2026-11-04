@@ -1,0 +1,20 @@
+.evidence-connection { padding: 12px 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary); font-size: 13px; }
+.evidence-connection-heading, .evidence-connection-heading h2, .evidence-connection-heading a, .evidence-connection-actions, .evidence-connection-actions button { display: flex; align-items: center; gap: 8px; }
+.evidence-connection-heading { justify-content: space-between; gap: 16px; }
+.evidence-connection-heading h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.evidence-connection-heading a { color: var(--text-primary); text-underline-offset: 3px; }
+.evidence-connection p { margin: 8px 0 0; line-height: 1.5; }
+.evidence-connection-actions { margin-top: 10px; flex-wrap: wrap; }
+.evidence-connection-actions button { padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); background: var(--bg-primary); font: inherit; cursor: pointer; }
+.evidence-connection-actions button:disabled { opacity: .5; cursor: default; }
+.evidence-connection-actions button:hover:not(:disabled) { background: var(--bg-tertiary); }
+.evidence-connection-actions span, .evidence-connection-hint { color: var(--text-secondary); font-size: 12px; }
+.evidence-connection-error { border-left: 3px solid var(--text-primary); padding-left: 9px; }
+.evidence-connection details { margin-top: 8px; color: var(--text-secondary); }
+.evidence-connection summary { cursor: pointer; }
+.evidence-connection li { margin-top: 5px; }
+.evidence-connection :is(button, a, summary):focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
+@media (max-width: 680px) {
+  .evidence-connection { padding: 12px; }
+  .evidence-connection-heading { align-items: flex-start; }
+}

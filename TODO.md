@@ -8,6 +8,13 @@
 
 ## 1. RDF Import / Export (with full test coverage)
 
+### Fork addition: local evidence review
+
+- [x] Add an opt-in, capability-gated connection to the local evidence workspace.
+- [x] Load a bound NVIDIA dictionary projection in the actual Designer and send description edits for explicit review.
+- [x] Preserve the local draft after stale saves and asynchronous load/save races.
+- [ ] Support explicitly mapped structural changes after stable property identities are defined.
+
 RDF import and export are implemented in `src/lib/rdf/`. The completed work
 below covers the supported visual model, not arbitrary RDF dataset editing.
 

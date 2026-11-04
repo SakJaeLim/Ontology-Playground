@@ -17,6 +17,9 @@ import {
   getOntologyDesignerScaleError,
 } from '../lib/ontologyScale';
 import { SourceFidelityNote } from './SourceFidelityNote';
+import { EvidenceConnectionPanel } from './EvidenceConnectionPanel';
+
+const EVIDENCE_REVIEW_ENABLED = import.meta.env.VITE_EVIDENCE_REVIEW === 'true';
 
 interface OntologyDesignerProps {
   route: Route & { page: 'designer' };
@@ -174,6 +177,7 @@ export function OntologyDesigner({ route }: OntologyDesignerProps) {
           onNewOntology={clearDesignerCatalogueContext}
         />
       </div>
+      {EVIDENCE_REVIEW_ENABLED && <EvidenceConnectionPanel onLoad={clearDesignerCatalogueContext} />}
       {loadError && <div role="alert" className="designer-import-error">{loadError}</div>}
       {mutationError && (
         <div role="alert" className="designer-import-error">
