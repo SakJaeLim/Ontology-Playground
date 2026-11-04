@@ -44,6 +44,12 @@ retains local edits and does not retry with a newer revision automatically.
 Keep a copy of the local work before loading the latest workspace. Edits made
 while a load or save is pending are also retained.
 
+The bound draft and saved revision survive in-app Back/history navigation.
+Opening a different draft, template or RDF document clears that binding. The
+draft remains in memory; a full page reload still requires loading the saved
+workspace again. The existing Designer size guard also applies before a
+workspace replaces the current draft.
+
 Only the local same-origin service is contacted. The client verifies the
 `evidence-connection-v1` capability and sends the service-issued CSRF header
 with its session cookie. No token is placed in a URL or local storage. Setting
@@ -73,6 +79,10 @@ Microsoft 편집기에서는 검토할 설명을 수정합니다.
 다른 탭이 작업 공간을 바꾼 경우 오래된 버전으로 저장할 수 없습니다. 이때 화면의
 편집 내용은 그대로 남습니다. 현재 내용을 별도로 보관한 뒤 최신 작업 공간을
 불러오세요. 불러오기나 전송 중 추가한 편집 내용도 자동으로 덮어쓰지 않습니다.
+
+앱 안에서 다른 화면으로 이동했다 돌아와도 초안과 검토 연결 정보가 유지됩니다.
+다른 초안이나 템플릿, RDF 문서를 열면 이전 연결은 해제됩니다. 브라우저 전체
+새로고침까지 보존되는 방식은 아니므로, 새로고침 전에는 검토로 보내 저장하세요.
 
 원본에서 편집 화면으로 옮기지 못한 항목은 서비스에 보존되며 안내에 표시됩니다.
 이 연결은 NVIDIA 서버나 모델을 배포하지 않으며, 설명을 수정했다고 그 의미가

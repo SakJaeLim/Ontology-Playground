@@ -1,21 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, FileCheck2, FolderOpen, Send } from 'lucide-react';
-import type { Ontology } from '../data/ontology';
 import { useDesignerStore } from '../store/designerStore';
 import { connectEvidenceReview, EvidenceConnectionError } from '../lib/evidenceConnection';
 import type { EvidenceClient } from '../lib/evidenceConnection';
+import { getOntologyDesignerScaleError } from '../lib/ontologyScale';
 import '../styles/evidenceConnection.css';
-
-interface LoadedDraft {
-  revision: string;
-  saved: Ontology;
-  notices: string[];
-}
 
 export function EvidenceConnectionPanel({ onLoad }: { onLoad: () => void }) {
   const ontology = useDesignerStore((state) => state.ontology);
+  const loaded = useDesignerStore((state) => state.evidenceBinding);
   const [client, setClient] = useState<EvidenceClient | null>(null);
-  const [loaded, setLoaded] = useState<LoadedDraft | null>(null);
   const [operation, setOperation] = useState<'load' | 'save' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -32,20 +26,22 @@ export function EvidenceConnectionPanel({ onLoad }: { onLoad: () => void }) {
 
   async function load() {
     if (!client || operation) return;
-    const before = useDesignerStore.getState().ontology;
+    const before = useDesignerStore.getState();
     const abort = new AbortController();
     controller.current = abort;
     setOperation('load'); setError(null); setMessage('');
     try {
       const state = await client.read(abort.signal);
       if (abort.signal.aborted) return;
-      if (useDesignerStore.getState().ontology !== before) {
+      const current = useDesignerStore.getState();
+      if (current.ontology !== before.ontology || current.draftGeneration !== before.draftGeneration) {
         throw new Error('불러오는 동안 편집 내용이 바뀌었습니다. 현재 내용은 유지했습니다.');
       }
       if (!state.ontology) throw new Error('검토 화면에서 데이터 사전을 먼저 가져오세요.');
+      const scaleError = getOntologyDesignerScaleError(state.ontology, state.ontology.name);
+      if (scaleError) throw new Error(scaleError);
       onLoad();
-      useDesignerStore.getState().loadDraft(state.ontology);
-      setLoaded({ revision: state.revision, saved: state.ontology, notices: state.notices });
+      useDesignerStore.getState().loadEvidenceDraft({ revision: state.revision, saved: state.ontology, notices: state.notices });
       setMessage('작업 공간을 불러왔습니다. 설명을 수정한 뒤 검토로 보내세요.');
     } catch (cause) {
       if (!abort.signal.aborted) setError(cause instanceof Error ? cause.message : '작업 공간을 불러오지 못했습니다.');
@@ -64,7 +60,9 @@ export function EvidenceConnectionPanel({ onLoad }: { onLoad: () => void }) {
       const state = await client.save(loaded.revision, submitted, abort.signal);
       if (abort.signal.aborted) return;
       if (!state.ontology) throw new Error('저장한 온톨로지를 확인하지 못했습니다.');
-      setLoaded({ revision: state.revision, saved: state.ontology, notices: state.notices });
+      if (!useDesignerStore.getState().acceptEvidenceSave(loaded, { revision: state.revision, saved: state.ontology, notices: state.notices })) {
+        throw new Error('전송 중 다른 초안을 열었습니다. 현재 초안과 연결 상태는 유지했습니다.');
+      }
       setMessage(useDesignerStore.getState().ontology === submitted
         ? '검토할 내용을 저장했습니다. 승인은 검토 화면에서 별도로 진행합니다.'
         : '보낸 내용은 저장했습니다. 전송 중 추가한 편집 내용은 아직 보내지 않았습니다.');

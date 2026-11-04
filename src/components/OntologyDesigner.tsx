@@ -29,6 +29,7 @@ export function OntologyDesigner({ route }: OntologyDesignerProps) {
   const {
     ontology,
     rdfDocument,
+    evidenceBinding,
     mutationError,
     clearMutationError,
     setOntologyName,
@@ -60,11 +61,13 @@ export function OntologyDesigner({ route }: OntologyDesignerProps) {
   const [designerContextCleared, setDesignerContextCleared] =
     useState(false);
   const routeLoadGeneration = useRef(0);
-  const editingCatalogueEntry = route.ontologyId
-    ? routeCatalogueEntry
-    : designerContextCleared
-      ? null
-      : currentCatalogueEntry;
+  const editingCatalogueEntry = evidenceBinding
+    ? null
+    : route.ontologyId
+      ? routeCatalogueEntry
+      : designerContextCleared
+        ? null
+        : currentCatalogueEntry;
   const clearDesignerCatalogueContext = () => {
     routeLoadGeneration.current += 1;
     setRouteCatalogueEntry(null);
@@ -177,7 +180,10 @@ export function OntologyDesigner({ route }: OntologyDesignerProps) {
           onNewOntology={clearDesignerCatalogueContext}
         />
       </div>
-      {EVIDENCE_REVIEW_ENABLED && <EvidenceConnectionPanel onLoad={clearDesignerCatalogueContext} />}
+      {EVIDENCE_REVIEW_ENABLED && <EvidenceConnectionPanel onLoad={() => {
+        clearDesignerCatalogueContext();
+        if (route.ontologyId) navigate({ page: 'designer' });
+      }} />}
       {loadError && <div role="alert" className="designer-import-error">{loadError}</div>}
       {mutationError && (
         <div role="alert" className="designer-import-error">

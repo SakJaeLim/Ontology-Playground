@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Ontology } from '../data/ontology';
@@ -8,6 +8,9 @@ import type { CatalogueEntry } from '../types/catalogue';
 import { createImportedRdfDocument } from '../lib/rdf/document';
 import { loadCatalogueEntry } from '../lib/catalogue';
 import { OntologyDesigner } from './OntologyDesigner';
+import { navigate } from '../lib/router';
+
+vi.hoisted(() => { vi.stubEnv('VITE_EVIDENCE_REVIEW', 'true'); });
 
 vi.mock('../lib/catalogue', () => ({
   loadCatalogueEntry: vi.fn(),
@@ -15,6 +18,18 @@ vi.mock('../lib/catalogue', () => ({
 
 vi.mock('../lib/router', () => ({
   navigate: vi.fn(),
+}));
+
+vi.mock('./EvidenceConnectionPanel', () => ({
+  EvidenceConnectionPanel: ({ onLoad }: { onLoad: () => void }) => (
+    <button onClick={() => {
+      onLoad();
+      useDesignerStore.getState().loadEvidenceDraft({
+        revision: 'evidence-1', notices: [],
+        saved: { ...useDesignerStore.getState().ontology, name: 'Evidence draft' },
+      });
+    }}>Load evidence fixture</button>
+  ),
 }));
 
 vi.mock('./designer', () => ({
@@ -133,6 +148,47 @@ describe('OntologyDesigner catalogue provenance', () => {
     expect(useAppStore.getState().currentCatalogueEntry).toBe(
       externalEntry,
     );
+  });
+
+  it('does not restore old catalogue provenance when a bound evidence draft remounts', () => {
+    useDesignerStore.getState().loadEvidenceDraft({
+      revision: 'generation-1', saved: { ...ontology, name: 'NVIDIA draft' }, notices: [],
+    });
+    const view = render(<OntologyDesigner route={{ page: 'designer' }} />);
+    expect(screen.getByText('No catalogue context')).toBeInTheDocument();
+    view.unmount();
+    render(<OntologyDesigner route={{ page: 'designer' }} />);
+    expect(screen.getByText('No catalogue context')).toBeInTheDocument();
+    expect(useAppStore.getState().currentCatalogueEntry).toBe(externalEntry);
+  });
+
+  it('leaves a catalogue deep link when evidence is loaded and still allows a new catalogue selection', async () => {
+    let finishCatalogue!: (value: Awaited<ReturnType<typeof loadCatalogueEntry>>) => void;
+    vi.mocked(loadCatalogueEntry).mockReturnValue(new Promise((resolve) => { finishCatalogue = resolve; }));
+    const oldEntry = {
+      ...externalEntry, ontology, bindings: [],
+      sourceArtifactUrl: undefined, sourceArtifactHash: undefined,
+      sourceArtifactByteLength: undefined, sourceArtifactMediaType: undefined,
+    };
+    const view = render(<OntologyDesigner route={{ page: 'designer', ontologyId: externalEntry.id }} />);
+    await userEvent.setup().click(screen.getByText('Load evidence fixture'));
+    expect(navigate).toHaveBeenCalledWith({ page: 'designer' });
+    view.rerender(<OntologyDesigner route={{ page: 'designer' }} />);
+    await act(async () => finishCatalogue(oldEntry));
+    expect(useDesignerStore.getState().ontology.name).toBe('Evidence draft');
+    act(() => useDesignerStore.getState().setOntologyDescription('Unsent evidence edit'));
+    view.unmount();
+    const returned = render(<OntologyDesigner route={{ page: 'designer' }} />);
+    expect(useDesignerStore.getState().ontology.description).toBe('Unsent evidence edit');
+    expect(useDesignerStore.getState().evidenceBinding?.revision).toBe('evidence-1');
+    expect(screen.getByText('No catalogue context')).toBeInTheDocument();
+
+    vi.mocked(loadCatalogueEntry).mockResolvedValue({
+      ...oldEntry, id: 'official/new', ontology: { ...ontology, name: 'New catalogue selection' },
+    });
+    returned.rerender(<OntologyDesigner route={{ page: 'designer', ontologyId: 'official/new' }} />);
+    await waitFor(() => expect(useDesignerStore.getState().ontology.name).toBe('New catalogue selection'));
+    expect(useDesignerStore.getState().evidenceBinding).toBeNull();
   });
 
   it('does not offer templates over an empty source-backed RDF document', async () => {

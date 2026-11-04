@@ -111,4 +111,73 @@ describe('EvidenceConnectionPanel', () => {
     await waitFor(() => expect(connectEvidenceReview).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('keeps the binding and unsent edits after navigating away and remounting', async () => {
+    const view = render(<EvidenceConnectionPanel onLoad={vi.fn()} />);
+    await loadWorkspace();
+    act(() => useDesignerStore.getState().updateEntity('dataset', { description: '돌아와서 보낼 설명' }));
+    view.unmount();
+    render(<EvidenceConnectionPanel onLoad={vi.fn()} />);
+    const submit = await screen.findByRole('button', { name: '검토로 보내기' });
+    expect(submit).toBeEnabled();
+    expect(screen.getByText('아직 보내지 않은 편집 내용')).toBeInTheDocument();
+    await userEvent.setup().click(submit);
+    await waitFor(() => expect(client.save).toHaveBeenCalledWith('generation-1', expect.objectContaining({
+      entityTypes: [expect.objectContaining({ description: '돌아와서 보낼 설명' })],
+    }), expect.any(AbortSignal)));
+    expect(client.read).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not replace the current draft or context with an oversized workspace', async () => {
+    const oversized = { ...source, entityTypes: Array.from({ length: 1000 }, (_, index) => ({ ...source.entityTypes[0], id: `entity-${index}` })) };
+    vi.mocked(client.read).mockResolvedValue({ ...state, ontology: oversized });
+    const before = useDesignerStore.getState().ontology;
+    const onLoad = vi.fn();
+    render(<EvidenceConnectionPanel onLoad={onLoad} />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '작업 공간 불러오기' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('too large for safe all-at-once editing');
+    expect(useDesignerStore.getState().ontology).toBe(before);
+    expect(onLoad).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '검토로 보내기' })).toBeDisabled();
+  });
+
+  it.each(['reset', 'replace'] as const)('clears the binding on an explicit %s', async (replacement) => {
+    render(<EvidenceConnectionPanel onLoad={vi.fn()} />);
+    await loadWorkspace();
+    act(() => {
+      const store = useDesignerStore.getState();
+      if (replacement === 'reset') store.resetDraft();
+      else store.loadDraft({ ...source, name: 'Another draft' });
+    });
+    expect(useDesignerStore.getState().evidenceBinding).toBeNull();
+    expect(screen.getByRole('button', { name: '검토로 보내기' })).toBeDisabled();
+  });
+
+  it('does not reattach an old binding after a pending save and draft replacement', async () => {
+    let finish!: (value: EvidenceState) => void;
+    vi.mocked(client.save).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    render(<EvidenceConnectionPanel onLoad={vi.fn()} />);
+    const user = await loadWorkspace();
+    await user.click(screen.getByRole('button', { name: '검토로 보내기' }));
+    const replacement = { ...source, name: 'Replacement draft' };
+    act(() => useDesignerStore.getState().loadDraft(replacement));
+    await act(async () => finish({ ...state, revision: 'generation-2' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('다른 초안을 열었습니다');
+    expect(useDesignerStore.getState().ontology).toBe(replacement);
+    expect(useDesignerStore.getState().evidenceBinding).toBeNull();
+    expect(screen.getByRole('button', { name: '검토로 보내기' })).toBeDisabled();
+  });
+
+  it('rejects a pending load if the draft was replaced with the same ontology object', async () => {
+    let finish!: (value: EvidenceState) => void;
+    vi.mocked(client.read).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    render(<EvidenceConnectionPanel onLoad={vi.fn()} />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '작업 공간 불러오기' }));
+    const before = useDesignerStore.getState().ontology;
+    act(() => useDesignerStore.getState().loadDraft(before));
+    await act(async () => finish(state));
+    expect(screen.getByRole('alert')).toHaveTextContent('불러오는 동안 편집 내용이 바뀌었습니다');
+    expect(useDesignerStore.getState().ontology).toBe(before);
+    expect(useDesignerStore.getState().evidenceBinding).toBeNull();
+  });
 });
