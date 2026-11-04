@@ -287,6 +287,16 @@ export function EntityForm() {
                       {(propNameErr || idTypeErr) && (
                         <span className="designer-field-hint error">{propNameErr || idTypeErr}</span>
                       )}
+                      <label className="designer-field">
+                        <span>{prop.name || 'Property'} description</span>
+                        <textarea
+                          rows={2}
+                          value={prop.description ?? ''}
+                          onChange={(e) => updateProperty(entity.id, idx, { description: e.target.value })}
+                          disabled={sourceBacked}
+                          title={sourceBacked ? 'Properties are read-only for source-backed RDF' : undefined}
+                        />
+                      </label>
                       </div>
                       );
                     })}

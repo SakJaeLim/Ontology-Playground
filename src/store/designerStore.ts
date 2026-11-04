@@ -209,6 +209,12 @@ function synchronizeMappedLiteral(
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 
+export interface EvidenceDraftBinding {
+  revision: string;
+  saved: Ontology;
+  notices: string[];
+}
+
 interface DesignerState {
   // Draft ontology
   ontology: Ontology;
@@ -218,6 +224,8 @@ interface DesignerState {
   _lastValidatedAt: number;
   rdfDocument: ReadyRdfDocument | null;
   mutationError: string | null;
+  evidenceBinding: EvidenceDraftBinding | null;
+  draftGeneration: number;
 
   // Actions — ontology metadata
   setOntologyName: (name: string) => void;
@@ -250,6 +258,8 @@ interface DesignerState {
     rdfDocument?: ReadyRdfDocument | null,
   ) => void;
   resetDraft: () => void;
+  loadEvidenceDraft: (binding: EvidenceDraftBinding) => void;
+  acceptEvidenceSave: (expected: EvidenceDraftBinding, next: EvidenceDraftBinding) => boolean;
   validate: () => ValidationError[];
   clearMutationError: () => void;
 
@@ -269,6 +279,20 @@ function emptyOntology(): Ontology {
   };
 }
 
+function replacementDraft(
+  ontology: Ontology,
+  rdfDocument: ReadyRdfDocument | null = null,
+  evidenceBinding: EvidenceDraftBinding | null = null,
+) {
+  return {
+    ontology, rdfDocument, evidenceBinding,
+    mutationError: null,
+    _past: [], _future: [],
+    selectedEntityId: null, selectedRelationshipId: null,
+    validationErrors: [],
+  };
+}
+
 export const useDesignerStore = create<DesignerState>((set, get) => ({
   ontology: emptyOntology(),
   selectedEntityId: null,
@@ -277,6 +301,8 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
   _lastValidatedAt: 0,
   rdfDocument: null,
   mutationError: null,
+  evidenceBinding: null,
+  draftGeneration: 0,
   _past: [],
   _future: [],
 
@@ -799,28 +825,28 @@ export const useDesignerStore = create<DesignerState>((set, get) => ({
 
   // ─ Bulk ─────────────────────────────────────────────────────────────────
   loadDraft: (ontology, rdfDocument = null) =>
-    set({
-      ontology,
-      rdfDocument,
-      mutationError: null,
-      _past: [],
-      _future: [],
-      selectedEntityId: null,
-      selectedRelationshipId: null,
-      validationErrors: [],
-    }),
+    set((s) => ({
+      ...replacementDraft(ontology, rdfDocument),
+      draftGeneration: s.draftGeneration + 1,
+    })),
 
   resetDraft: () =>
-    set({
-      ontology: emptyOntology(),
-      rdfDocument: null,
-      mutationError: null,
-      _past: [],
-      _future: [],
-      selectedEntityId: null,
-      selectedRelationshipId: null,
-      validationErrors: [],
-    }),
+    set((s) => ({
+      ...replacementDraft(emptyOntology()),
+      draftGeneration: s.draftGeneration + 1,
+    })),
+
+  loadEvidenceDraft: (binding) =>
+    set((s) => ({
+      ...replacementDraft(binding.saved, null, binding),
+      draftGeneration: s.draftGeneration + 1,
+    })),
+
+  acceptEvidenceSave: (expected, next) => {
+    if (get().evidenceBinding !== expected) return false;
+    set({ evidenceBinding: next });
+    return true;
+  },
 
   validate: () => {
     const state = get();

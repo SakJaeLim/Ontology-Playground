@@ -17,6 +17,9 @@ import {
   getOntologyDesignerScaleError,
 } from '../lib/ontologyScale';
 import { SourceFidelityNote } from './SourceFidelityNote';
+import { EvidenceConnectionPanel } from './EvidenceConnectionPanel';
+
+const EVIDENCE_REVIEW_ENABLED = import.meta.env.VITE_EVIDENCE_REVIEW === 'true';
 
 interface OntologyDesignerProps {
   route: Route & { page: 'designer' };
@@ -26,6 +29,7 @@ export function OntologyDesigner({ route }: OntologyDesignerProps) {
   const {
     ontology,
     rdfDocument,
+    evidenceBinding,
     mutationError,
     clearMutationError,
     setOntologyName,
@@ -57,11 +61,13 @@ export function OntologyDesigner({ route }: OntologyDesignerProps) {
   const [designerContextCleared, setDesignerContextCleared] =
     useState(false);
   const routeLoadGeneration = useRef(0);
-  const editingCatalogueEntry = route.ontologyId
-    ? routeCatalogueEntry
-    : designerContextCleared
-      ? null
-      : currentCatalogueEntry;
+  const editingCatalogueEntry = evidenceBinding
+    ? null
+    : route.ontologyId
+      ? routeCatalogueEntry
+      : designerContextCleared
+        ? null
+        : currentCatalogueEntry;
   const clearDesignerCatalogueContext = () => {
     routeLoadGeneration.current += 1;
     setRouteCatalogueEntry(null);
@@ -174,6 +180,10 @@ export function OntologyDesigner({ route }: OntologyDesignerProps) {
           onNewOntology={clearDesignerCatalogueContext}
         />
       </div>
+      {EVIDENCE_REVIEW_ENABLED && <EvidenceConnectionPanel onLoad={() => {
+        clearDesignerCatalogueContext();
+        if (route.ontologyId) navigate({ page: 'designer' });
+      }} />}
       {loadError && <div role="alert" className="designer-import-error">{loadError}</div>}
       {mutationError && (
         <div role="alert" className="designer-import-error">

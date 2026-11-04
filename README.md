@@ -71,6 +71,22 @@ no projectable classes, so authored starter templates cannot silently replace
 their preserved graph. Ontologies with 1,000 or more projected graph elements
 remain available in the viewer but are not opened in the all-at-once Designer.
 
+### Local evidence review connection (this fork)
+
+An opt-in Designer panel connects to the local evidence-review service in
+[SakJaeLim/llm_wiki](https://github.com/SakJaeLim/llm_wiki/tree/main/extensions/evidence-review).
+The service imports a native NVIDIA Auto Ontology dictionary and supplies a
+bound editing draft. Load that draft explicitly, edit its descriptions, and
+send it back for a separate evidence review. A stale save keeps the local
+draft instead of overwriting a newer workspace.
+
+This connection edits bound entity and property descriptions plus the
+ontology title and description. Structural changes are rejected by the
+service. It does not deploy NVIDIA model services or approve claims for the
+user. It is a fork addition, not an upstream Microsoft or NVIDIA integration.
+The panel is disabled by default and appears only after a same-origin
+loopback capability handshake. See the [English and Korean setup guide](docs/evidence-connection.md).
+
 ### RDF Import & Export
 
 RDF/XML imports retain the exact original bytes and a complete semantic graph
@@ -254,6 +270,7 @@ Client-side hash routing with shareable URLs for every page:
 | `/#/catalogue` | Ontology gallery |
 | `/#/catalogue/<source>/<slug>` | Specific ontology (e.g. `/#/catalogue/official/cosmic-coffee`) |
 | `/#/designer` | Visual designer |
+| `/editor/#/designer` | Designer with the opt-in local evidence panel when mounted by the evidence-review service |
 | `/#/designer/<source>/<slug>` | Designer with catalogue ontology (e.g. `/#/designer/official/cosmic-coffee`) |
 | `/#/learn` | Ontology School — course catalogue |
 | `/#/learn/<course>` | Course detail — article list |
@@ -360,6 +377,7 @@ They do not deploy managed Azure Functions.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `VITE_ENABLE_AI_BUILDER` | `false` | Show the opt-in connector-based AI builder; requires a protected generation gateway |
+| `VITE_EVIDENCE_REVIEW` | `false` | Enable the local evidence connection panel; requires the matching service on `127.0.0.1` at the same origin |
 | `VITE_ENABLE_LEGACY_FORMATS` | `false` | Enable JSON/YAML/CSV import/export formats |
 | `VITE_BASE_PATH` | `/` | Base path for the app (set automatically for GitHub Pages) |
 | `VITE_GITHUB_CLIENT_ID` | *(empty)* | GitHub OAuth App client ID for one-click catalogue PRs ([setup guide](docs/github-oauth-setup.md)) |
